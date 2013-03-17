@@ -1,10 +1,14 @@
 #-*- coding: utf-8 -*-
 
+""" TODO:
+ - kodowanie znaków
+ - get_dump
+"""
+
 import re, copy
 import urllib as url
 import sqlite3 as db
 from andip.provider import AbstractProvider
-from andip.provider import Conjugation
 
 def dict_factory(cursor, row):
     d = {}
@@ -72,8 +76,45 @@ class WikiProvider(AbstractProvider):
             cur.execute('SELECT result FROM %s WHERE %s' % (type, where))
 
             data = cur.fetchone()
-            return data['result']
+            if data != None:
+                return data['result']
+            else:
+                return None
 
+        except db.Error, e:
+            print "Database connection error %s:" % e.args[0]
+            
+        finally:
+            if con:
+                con.close()
+                
+    def _insert_data_into_database(self, type, word, conf):
+        assert isinstance(word, str)
+        assert len(word) > 0
+        assert isinstance(type, str)
+        assert len(type) > 0
+        assert isinstance(conf, dict)
+        assert len(conf) > 0
+        
+        con = None
+        try:
+            con = db.connect(self.__databaseName)
+            cur = con.cursor()
+
+            cols = ''
+            vals = ''
+            for (i, j) in conf.iteritems():
+                cols += '%s, ' % i  
+                vals += '%s, ' % j
+            
+            cols += 'word'
+            vals += '%s' % word
+
+            print cols
+            print vals
+            cur.execute('INSERT INTO %s (%s) VALUES(%s)' % (type, cols, vals))
+            cur.execute('INSERT INTO indeks (word, type) VALUES(%s, %s)' % (word, type))
+            con.commit()
         except db.Error, e:
             print "Database connection error %s:" % e.args[0]
             
@@ -91,31 +132,14 @@ class PlWikiProvider(WikiProvider):
     def __init__(self):
         WikiProvider.__init__(self, "http://pl.wiktionary.org/", "pl")
         self.__schema_adjective = None
-#        
-#    def _get_data(self, properties, data):
-#        assert len(data.keys()) == 1
-#
-#        key = data.keys()[0]
-#        val = properties[key]
-#        data = data[key]
-#
-#        if data.has_key(val):
-#            data = data[val]
-#        else:
-#            raise Exception("data not found, searched for = %s, available = %s" % (val, data))
-#
-#        del properties[key]
-#
-#        if isinstance(data, basestring):
-#            return data
-#
-#        if len(properties.keys()) == 0:
-#            #raise Exception("incorrect path: %s", data)
-#            return data
-#
-#        return self._get_data(properties, data)
-#
-    def __get_conf_adjective(self, word, data):
+
+    def __save_conf_noun(self, word, data):
+        pass
+    
+    def __save_conf_verb(self, word, data):
+        pass
+    
+    def __save_conf_adjective(self, word, data):
         if len(data) == 0:
             raise Exception("API error: couldn't find adjective")
         
@@ -134,21 +158,54 @@ class PlWikiProvider(WikiProvider):
         
 #        data = {'stopien' : 'podstawowy'}
 #        # generowanie odmian
-#        if self.__schema_adjective is None:
-#            self.__schema_adjective = self._load("../data/adjective_schema")
-#
-#        last_letter = base_word[len(base_word) - 1]
-##        print base_word, last_letter
+        if self.__schema_adjective is None:
+            self.__schema_adjective = self._load("../data/adjective_schema")
+
+        last_letter = word[len(word) - 1]
+#        print base_word, last_letter
 #        if last_letter == 'y' or last_letter == 'i':
-#            retval = copy.deepcopy(self.__schema_adjective[last_letter])
-##            print retval['przypadek']['mianownik']['liczba']['mnoga']['rodzaj']['m']
+        retval = copy.deepcopy(self.__schema_adjective[last_letter])
+#            print retval['przypadek']['mianownik']['liczba']['mnoga']['rodzaj']['m']
 #            for przyp in retval['przypadek']:
 #                for licz in retval['przypadek'][przyp]['liczba']:
 #                    for rodz in retval['przypadek'][przyp]['liczba'][licz]['rodzaj']:
 #                        retval['przypadek'][przyp]['liczba'][licz]['rodzaj'][rodz] = base_word[0:len(base_word) - 1] + retval['przypadek'][przyp]['liczba'][licz]['rodzaj'][rodz]
-#           
-##            print base_word, 'haskey', base_word[len(base_word) - 2]
-##            print retval['przypadek']['mianownik']['liczba']['mnoga']['rodzaj']['m']
+        try:
+            con = db.connect("../data/pl.db")
+            cur = con.cursor()
+#            cur.execute('CREATE TABLE przymiotnik_schemat (sufix TEXT, przypadek TEXT, liczba TEXT, rodzaj TEXT, result TEXT)')
+            for przyp in retval['przypadek']:
+                for licz in retval['przypadek'][przyp]['liczba']:
+                    for rodz in retval['przypadek'][przyp]['liczba'][licz]['rodzaj']:
+                        if licz == 'pojedyncza':
+                            rodza = {
+                                "m" : "męski",
+                                "ż" : "żeński",
+                                "n" : "nijaki"
+                            }.get(rodz)
+                        else:
+                            rodza = {
+                                "m" : "męskoosobowy",
+                                "nm" : "niemęskoosobowy"
+                            }.get(rodz)
+                            
+                        print 'INSERT INTO przymiotnik_schemat (przypadek, liczba, rodzaj, sufix, result) VALUES (%s, %s, %s, %s, %s)' % (last_letter, przyp, licz, rodza, retval['przypadek'][przyp]['liczba'][licz]['rodzaj'][rodz])
+                        cur.execute('INSERT INTO przymiotnik_schemat VALUES ("%s", "%s", "%s", "%s", "%s")' % (last_letter, przyp, licz, rodza, retval['przypadek'][przyp]['liczba'][licz]['rodzaj'][rodz]))
+                        con.commit()
+                
+#            cur.execute('INSERT INTO indeks (word, type) VALUES(%s, %s)' % (word, type))
+#            cur.execute('INSERT INTO przymiotnik ("word") VALUES ("dupa")')
+#            con.commit()
+#            print cur.fetchall()
+        except db.Error, e:
+            print "Database connection error %s:" % e.args[0]
+            
+        finally:
+            if con:
+                con.close() 
+                
+#            print base_word, 'haskey', base_word[len(base_word) - 2]
+#            print retval['przypadek']['mianownik']['liczba']['mnoga']['rodzaj']['m']
 #            if self.__schema_adjective['exceptions'].has_key(base_word[len(base_word) - 2]) == 1:
 #                tmp = list(retval['przypadek']['mianownik']['liczba']['mnoga']['rodzaj']['m'])
 #                tmp[len(base_word) - 2]  = self.__schema_adjective['exceptions'][base_word[len(base_word) - 2]]
@@ -196,14 +253,14 @@ class PlWikiProvider(WikiProvider):
         data = self._get_data_from_api(word)
 
         wikiType = re.findall("-([^-]*)-polski", data)
-        if len(wikiType) == 0 or wikiType != type[0]:
+        if len(wikiType) == 0 or wikiType[0] != type:
             raise Exception("data not found: %s" % word)
         
         switch = {
             'przymiotnik':  self.__save_conf_adjective,
             'czasownik':    self.__save_conf_verb,
             'rzeczownik':   self.__save_conf_noun #
-        }.get(type)(type, word, re.findall("\{\{odmiana-" + type + "-polski([^\}]*)\}\}", data));
+        }.get(type)(word, re.findall("\{\{odmiana-" + type + "-polski([^\}]*)\}\}", data));
         return self.get_word(config, True)
 
     def get_dump(self, word = None, conf = None):

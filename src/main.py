@@ -28,7 +28,7 @@ print ad.get_conf("zachodni")
 #print ad.get_conf("żółty")
 #print ad.get_conf("zdrów")
 
-print ad.get_word(('przymiotnik', 'zdrowy', {'przypadek' : 'mianownik', 'liczba' : 'mnoga', 'rodzaj' : 'męskoosobowy'}))
-
+print ad.get_word(('przymiotnik', 'miły', {'przypadek' : 'mianownik', 'liczba' : 'mnoga', 'rodzaj' : 'męskoosobowy'}))
+print ad.get_word(('przymiotnik', 'głupi', {'przypadek' : 'mianownik', 'liczba' : 'mnoga', 'rodzaj' : 'męskoosobowy'}))
 #
 #print ad.get_word(('przymiotnik', 'żółty', {'przypadek': 'miejscownik', 'liczba': 'mnoga', 'rodzaj': 'm' }))
