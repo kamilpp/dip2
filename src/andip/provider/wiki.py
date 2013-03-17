@@ -1,35 +1,212 @@
 #-*- coding: utf-8 -*-
-'''
-Created on Apr 27, 2012
 
-@author: Bartosz Alchimowicz
-'''
-
-import urllib
-import re
-
-from andip import DataProvider
+import re, copy
+import urllib as url
+import sqlite3 as db
+from andip.provider import AbstractProvider
 from andip.provider import Conjugation
 
+def dict_factory(cursor, row):
+    d = {}
+    for idx, col in enumerate(cursor.description):
+        d[col[0]] = row[idx]
+    return d
 
-class WikiProvider(DataProvider):
-    def __init__(self, url):
-        self.__url = url
+class WikiProvider(AbstractProvider):
+    def __init__(self, url, database):
+        self.__apiUrl = url
+        self.__databaseName = '../data/' + database + '.db'
         
-    def _get_word(self, conf):
-        assert isinstance(conf, tuple)
-        assert len(conf) == 3
-        assert isinstance(conf[0], basestring)
-        assert isinstance(conf[1], basestring)
-        assert isinstance(conf[2], dict)
-        #
+    def _get_conf_from_database(self, result):
+        assert isinstance(result, str)
+        assert len(result) > 0
 
-    def _get_conf(self, word):
+        con = None
+        try:
+            con = db.connect(self.__databaseName)
+            con.row_factory = dict_factory
+            cur = con.cursor()
+            cur.execute('SELECT * FROM indeks WHERE word="%s"' % result)
+        
+            data = cur.fetchone()
+            if data == None:
+                return None
+            
+            type = data['type']
+            cur.execute('SELECT * FROM %s WHERE result="%s"' % (type, result))
+            data = cur.fetchone()
+            
+            del data['result']
+            word = data['word']
+            del data['word']
+            return [type, word, data]
+
+        except db.Error, e:
+            print "Database connection error %s:" % e.args[0]
+            
+        finally:
+            if con:
+                con.close()
+                
+    def _get_word_from_database(self, type, word, conf):
+        assert isinstance(word, str)
+        assert len(word) > 0
+        assert isinstance(type, str)
+        assert len(type) > 0
+        assert isinstance(conf, dict)
+        assert len(conf) > 0
+        
+        con = None
+        try:
+            con = db.connect(self.__databaseName)
+            con.row_factory = dict_factory
+            cur = con.cursor()
+
+#            args = [k for (k, v) in conf.iteritems()]
+#            vals = [v for (k, v) in conf.iteritems()]
+            where = ''
+            for (i, j) in conf.iteritems():
+                where += '"%s"="%s" AND ' % (i, j)
+#            where = where[:-5]
+            where += '"word"="%s" ' % word
+            cur.execute('SELECT result FROM %s WHERE %s' % (type, where))
+
+            data = cur.fetchone()
+            return data['result']
+
+        except db.Error, e:
+            print "Database connection error %s:" % e.args[0]
+            
+        finally:
+            if con:
+                con.close()
+        
+    def _get_data_from_api(self, word):
         assert isinstance(word, str)
         
-        return urllib.urlopen(self.__url + 'w/api.php?format=xml&action=query&prop=revisions&rvprop=content&titles=' + word).read()
+        return url.urlopen(self.__apiUrl + 'w/api.php?format=xml&action=query&prop=revisions&rvprop=content&titles=' + word).read()
+    
+class PlWikiProvider(WikiProvider):
+    
+    def __init__(self):
+        WikiProvider.__init__(self, "http://pl.wiktionary.org/", "pl")
+        self.__schema_adjective = None
+#        
+#    def _get_data(self, properties, data):
+#        assert len(data.keys()) == 1
+#
+#        key = data.keys()[0]
+#        val = properties[key]
+#        data = data[key]
+#
+#        if data.has_key(val):
+#            data = data[val]
+#        else:
+#            raise Exception("data not found, searched for = %s, available = %s" % (val, data))
+#
+#        del properties[key]
+#
+#        if isinstance(data, basestring):
+#            return data
+#
+#        if len(properties.keys()) == 0:
+#            #raise Exception("incorrect path: %s", data)
+#            return data
+#
+#        return self._get_data(properties, data)
+#
+    def __get_conf_adjective(self, word, data):
+        if len(data) == 0:
+            raise Exception("API error: couldn't find adjective")
         
-    def _get_dump(self, word = None, conf = None):
+#        words = data[0].replace("|", "").split("\n")
+#        
+#        assert len(words) > 0
+#        word = words[0]
+#        
+#        # generowanie stopniowania
+#        if word == '' or word == 'brak':
+#            # brak stopniowania?
+#            pass
+#        else:
+##            print word # stopniowanie na podstawie podanego drugiego stopnia
+#            pass
+        
+#        data = {'stopien' : 'podstawowy'}
+#        # generowanie odmian
+#        if self.__schema_adjective is None:
+#            self.__schema_adjective = self._load("../data/adjective_schema")
+#
+#        last_letter = base_word[len(base_word) - 1]
+##        print base_word, last_letter
+#        if last_letter == 'y' or last_letter == 'i':
+#            retval = copy.deepcopy(self.__schema_adjective[last_letter])
+##            print retval['przypadek']['mianownik']['liczba']['mnoga']['rodzaj']['m']
+#            for przyp in retval['przypadek']:
+#                for licz in retval['przypadek'][przyp]['liczba']:
+#                    for rodz in retval['przypadek'][przyp]['liczba'][licz]['rodzaj']:
+#                        retval['przypadek'][przyp]['liczba'][licz]['rodzaj'][rodz] = base_word[0:len(base_word) - 1] + retval['przypadek'][przyp]['liczba'][licz]['rodzaj'][rodz]
+#           
+##            print base_word, 'haskey', base_word[len(base_word) - 2]
+##            print retval['przypadek']['mianownik']['liczba']['mnoga']['rodzaj']['m']
+#            if self.__schema_adjective['exceptions'].has_key(base_word[len(base_word) - 2]) == 1:
+#                tmp = list(retval['przypadek']['mianownik']['liczba']['mnoga']['rodzaj']['m'])
+#                tmp[len(base_word) - 2]  = self.__schema_adjective['exceptions'][base_word[len(base_word) - 2]]
+#                retval['przypadek']['mianownik']['liczba']['mnoga']['rodzaj']['m'] = "".join(tmp)
+#                
+#                tmp = list(retval['przypadek']['wołacz']['liczba']['mnoga']['rodzaj']['m'])
+#                tmp[len(base_word) - 2]  = self.__schema_adjective['exceptions'][base_word[len(base_word) - 2]]
+#                retval['przypadek']['wołacz']['liczba']['mnoga']['rodzaj']['m'] = "".join(tmp)
+##                print retval['przypadek']['mianownik']['liczba']['mnoga']['rodzaj']['m']
+##                print retval['przypadek']['wołacz']['liczba']['mnoga']['rodzaj']['m']
+#        else:
+#            raise Exception("adjective is not regular!")
+
+
+    def get_conf(self, word):
+        
+        data = self._get_conf_from_database(word)
+        if data != None:
+            return data
+        else:
+            return 'data not found: %s' % word
+    
+    def get_word(self, config, cycle = False):
+        '''
+            Conf is a configuration that user chose to get information about word.
+            It's a touple, that first element determines type of word, second is the word alone,
+            and the third is a dictionary that contains details about form of word we want to have
+        
+        '''
+        assert isinstance(config, tuple)
+        assert len(config) == 3
+        type, word, conf = config
+
+        assert isinstance(type, str)
+        assert isinstance(word, str)
+        assert isinstance(conf, dict)
+
+        
+        # searching in database
+        data = self._get_word_from_database(type, word, conf)
+        if data != None or cycle == True:
+            return data
+        
+        # creating config using wiki API, adding to database
+        data = self._get_data_from_api(word)
+
+        wikiType = re.findall("-([^-]*)-polski", data)
+        if len(wikiType) == 0 or wikiType != type[0]:
+            raise Exception("data not found: %s" % word)
+        
+        switch = {
+            'przymiotnik':  self.__save_conf_adjective,
+            'czasownik':    self.__save_conf_verb,
+            'rzeczownik':   self.__save_conf_noun #
+        }.get(type)(type, word, re.findall("\{\{odmiana-" + type + "-polski([^\}]*)\}\}", data));
+        return self.get_word(config, True)
+
+    def get_dump(self, word = None, conf = None):
         """
         Dump data of a specified word in a string recognazible by FileProvider.
         @param word: a word to dump
@@ -38,106 +215,6 @@ class WikiProvider(DataProvider):
         """
         pass
 
-    
-class PlWikiProvider(WikiProvider):
-    
-    def __init__(self):
-        WikiProvider.__init__(self, "http://pl.wiktionary.org/")
-        self.__schema_adjective = None
-    
-    def _load(self, data_set):
-        return eval(open(data_set + ".txt").read())
-    
-    def __get_conf_verb(self, base_word, data):
-        if len(data) == 0:
-            raise Exception("verb error")
-        for conf in data:
-            config = dict()
-            conf = conf.replace("| ", "").split("\n")
-            for element in filter(None, conf): # filter removes empty elements
-                tmp = element.split("=")
-                config[tmp[0]] = tmp[1]
-            return config
-                
-    def __get_conf_noun(self, base_word, data):
-        print 'noun'
-            
-    def __get_conf_adjective(self, base_word, data):
-        if len(data) == 0:
-            raise Exception("adjective error")
-        words = data[0].replace("|", "").split("\n")
-        
-        assert len(words) > 0
-        word = words[0]
-        
-        # generowanie stopniowania
-        if word == '' or word == 'brak':
-            # brak stopniowania?
-            return
-        else:
-#            print word # stopniowanie na podstawie podanego drugiego stopnia
-            pass
-    
-        # generowanie odmian
-        if self.__schema_adjective is None:
-            self.__schema_adjective = self._load("../data/adjective_schema")
-
-        last_letter = base_word[len(base_word) - 1]
-        if last_letter == 'y' or last_letter == 'i':
-            retval = self.__schema_adjective[last_letter]
-            for przyp in retval['przypadek']:
-                for licz in retval['przypadek'][przyp]['liczba']:
-                    for rodz in retval['przypadek'][przyp]['liczba'][licz]['rodzaj']:
-                        print base_word[0:len(base_word) - 2], retval['przypadek'][przyp]['liczba'][licz]['rodzaj'][rodz] 
-                        
-                        retval['przypadek'][przyp]['liczba'][licz]['rodzaj'][rodz] = base_word[0:len(base_word) - 1] + retval['przypadek'][przyp]['liczba'][licz]['rodzaj'][rodz] 
-                    
-        return retval
-#        print self.__schema_adjective['y']
-        
-#        retval = self.conf_cache.get(word, None)
-
-
-    def get_conf(self, word):
-        data = self._get_conf(word)
-
-        type = re.findall("-([^-]*)-polski", data)
-        if len(type) == 0:
-            raise Exception("word not found")
-        return {
-            'przymiotnik': self.__get_conf_adjective,
-            'czasownik': self.__get_conf_verb,
-            #(re.findall("\{\{odmiana-czasownik-polski([^\}]*)}}", data)),
-            'rzeczownik': self.__get_conf_noun #
-        }.get(type[0])(word, re.findall("\{\{odmiana-" + type[0] + "-polski([^\}]*)}}", data));
-
-    def get_word(self, conf):
-        '''
-            Conf is a configuration that user chose to get information about word.
-            It's a touple, that first element determines type of word, second is the word alone,
-            and the third is a dictionary that contains details about form of word we want to have
-        
-        '''
-        word_about =  self._get_conf(conf[1])
-        
-        if conf[0] == 'przymiotnik':
-            tmp = self.__get_conf_adjective(word_about), #
-        elif conf[0] == 'czasownik': 
-            tmp = self.__get_conf_verb(re.findall("\{\{odmiana-czasownik-polski([^\}]*)}}", word_about)),
-            tmp = tmp[0]
-            
-            conj = Conjugation.Conjugation(Conjugation.conjugation[tmp['koniugacja']], tmp['dokonany'])
-            new_end = conj.get_word(conf[2]['forma'], conf[2]['liczba'], conf[2]['osoba'])
-            
-            return conf[1].replace(conj.end, new_end)
-        elif conf[0] == 'rzeczownik': 
-            tmp =  self.__get_conf_noun #
-            
-        
-        
-
-    def get_dump(self, word = None, conf = None):
-        return self._get_dump(word, conf)
 
 
 

@@ -1,19 +1,13 @@
-'''
-Created on Apr 27, 2012
+#-*- coding: utf-8 -*-
 
-@author: Bartosz Alchimowicz
-'''
+import copy, collections
+from andip.provider import AbstractProvider
 
-import copy
-import collections
-
-from andip import DataProvider
-
-class FileProvider(DataProvider):
+class FileProvider(AbstractProvider):
 	def __init__(self, filename):
 		self.data_set = self._load(filename)
 		self.conf_cache = None
-
+	
 	def _load(self, data_set):
 		return eval(open(data_set + ".txt").read())
 

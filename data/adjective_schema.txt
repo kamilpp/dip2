@@ -1,4 +1,8 @@
 {
+	'exceptions': {
+		'k': 'c',
+		't': 'c'
+	}, # end exceptions
 	'y': {
 		'przypadek': {
 			'mianownik': {
@@ -121,5 +125,128 @@
 				}
 			} # end wołacz
 		} # end przypadek
-	} # end y
+	}, # end y
+	'i': {
+		'przypadek': {
+			'mianownik': {
+				'liczba': {
+					'pojedyncza': {
+						'rodzaj': {
+							'm': 'i',
+							'ż': 'a',
+							'n': 'ie'
+						}
+					},
+					'mnoga': {
+						'rodzaj': {
+							'm': 'i',
+							'nm': 'ie'
+						}
+					}
+				}
+			}, # end mianownik
+			'dopełniacz': {
+				'liczba': {
+					'pojedyncza': {
+						'rodzaj': {
+							'm': 'iego',
+							'ż': 'a',
+							'n': 'ie'
+						}
+					},
+					'mnoga': {
+						'rodzaj': {
+							'm': 'ich', 
+							'nm': 'ich'
+						}
+					}
+				}
+			}, # end dopełniacz
+			'celownik': {
+				'liczba': {
+					'pojedyncza': {
+						'rodzaj': {
+							'm': 'iemu',
+							'ż': 'iej',
+							'n': 'iego'
+						}
+					},
+					'mnoga': {
+						'rodzaj': {
+							'm': 'iemu', 
+							'nm': 'im'
+						}
+					}
+				}
+			}, # end celownik
+			'biernik': {
+				'liczba': {
+					'pojedyncza': {
+						'rodzaj': {
+							'm': 'iego',
+							'ż': 'ą',
+							'n': 'ie'
+						}
+					},
+					'mnoga': {
+						'rodzaj': {
+							'm': 'ich', 
+							'nm': 'ie'
+						}
+					}
+				}
+			}, # end biernik
+			'narzędnik': {
+				'liczba': {
+					'pojedyncza': {
+						'rodzaj': {
+							'm': 'im',
+							'ż': 'ą',
+							'n': 'im'
+						}
+					},
+					'mnoga': {
+						'rodzaj': {
+							'm': 'im', 
+							'nm': 'imi'
+						}
+					}
+				}
+			}, # end narzędnik
+			'miejscownik': {
+				'liczba': {
+					'pojedyncza': {
+						'rodzaj': {
+							'm': 'im',
+							'ż': 'iej',
+							'n': 'im'
+						}
+					},
+					'mnoga': {
+						'rodzaj': {
+							'm': 'ich', 
+							'nm': 'ich'
+						}
+					}
+				}
+			}, # end miekscownik
+			'wołacz': {
+				'liczba': {
+					'pojedyncza': {
+						'rodzaj': {
+							'm': 'i',
+							'ż': 'a',
+							'n': 'ie'
+						}
+					},
+					'mnoga': {
+						'rodzaj': {
+							'm': 'i', 
+							'nm': 'ie'
+						}
+					}
+				}
+			} # end wołacz
+		} # end przypadek
+	} # end i
 }

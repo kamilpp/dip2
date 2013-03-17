@@ -1,14 +1,10 @@
 # -*- coding: utf-8 -*-
 
-'''
-Created on Apr 27, 2012
-
-@author: Bartosz Alchimowicz
-'''
+from andip.provider import AbstractProvider
 
 class AnDiP(object):
 	def __init__(self, provider):
-		assert isinstance(provider, DataProvider)
+		assert isinstance(provider, AbstractProvider)
 
 		self.__provider = provider
 
@@ -36,10 +32,3 @@ class AnDiP(object):
 		"""
 
 		return self.__provider.get_conf(word)
-
-class DataProvider(object):
-	def get_word(self, conf):
-		raise Exception("abstract method")
-
-	def get_conf(self, word):
-		raise Exception("abstract method")

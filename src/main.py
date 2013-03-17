@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
 from andip import AnDiP
-from andip.provider import FileProvider
-from andip.provider.wiki import PlWikiProvider
+#from andip.provider import FileProvider
+from andip.provider import PlWikiProvider
 
-ad = AnDiP(FileProvider("../data/polish"))
+#ad = AnDiP(FileProvider("../data/polish"))
 ad = AnDiP(PlWikiProvider())
 
 #print 'opisany', ad.get_word(('przymiotnik', 'opis', {'liczba': 'pojedyncza', 'rodzaj': 'm'}))
@@ -18,13 +18,17 @@ ad = AnDiP(PlWikiProvider())
 #print ad.get_word("występować")
 #print ad.get_word("srać")
 
-#print ad.get_word(('czasownik', 'występować', {'aspekt' : 'dokonane', 'forma' : 'czas terazniejszy', 'liczba' : 'mnoga', 'osoba': 'trzecia'}))
 #print ad.get_conf("występować")
 #print ad.get_conf("srać")
-print ad.get_conf("piękny")
-print ad.get_conf("zdrowy")
+#print ad.get_conf("piękny")
+print ad.get_conf("zdrowi")
 print ad.get_conf("zachodni")
+#print ad.get_conf("zachodni")
+#print ad.get_conf("żałosny")
+#print ad.get_conf("żółty")
 #print ad.get_conf("zdrów")
 
+print ad.get_word(('przymiotnik', 'zdrowy', {'przypadek' : 'mianownik', 'liczba' : 'mnoga', 'rodzaj' : 'męskoosobowy'}))
+
 #
-#print ad.get_word(('czasownik', 'być', {'forma': 'czas przesz\xc5\x82y', 'osoba': 'trzecia', 'aspekt': 'dokonane', 'liczba': 'pojedyncza'}))
+#print ad.get_word(('przymiotnik', 'żółty', {'przypadek': 'miejscownik', 'liczba': 'mnoga', 'rodzaj': 'm' }))
