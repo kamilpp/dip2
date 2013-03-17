@@ -21,6 +21,26 @@ class WikiProvider(AbstractProvider):
         self.__apiUrl = url
         self.__databaseName = '../data/' + database + '.db'
         
+    def _get_custom_data_from_database(self, sqlStatement):
+        assert isinstance(sqlStatement, str)
+        assert len(sqlStatement) > 0
+
+        con = None
+        try:
+            con = db.connect(self.__databaseName)
+            con.row_factory = dict_factory
+            cur = con.cursor()
+            cur.execute(sqlStatement)
+        
+            return cur.fetchall()
+        
+        except db.Error, e:
+            print "Database connection error %s:" % e.args[0]
+            
+        finally:
+            if con:
+                con.close()
+                
     def _get_conf_from_database(self, result):
         assert isinstance(result, str)
         assert len(result) > 0
@@ -104,16 +124,15 @@ class WikiProvider(AbstractProvider):
             cols = ''
             vals = ''
             for (i, j) in conf.iteritems():
-                cols += '%s, ' % i  
-                vals += '%s, ' % j
+                cols += '"%s", ' % i  
+                vals += '"%s", ' % j
             
-            cols += 'word'
-            vals += '%s' % word
+            cols += '"word"'
+            vals += '"%s"' % word
 
-            print cols
-            print vals
             cur.execute('INSERT INTO %s (%s) VALUES(%s)' % (type, cols, vals))
-            cur.execute('INSERT INTO indeks (word, type) VALUES(%s, %s)' % (word, type))
+            con.commit()
+            cur.execute('INSERT INTO indeks ("word", "type") VALUES("%s", "%s")' % (conf['result'], type))
             con.commit()
         except db.Error, e:
             print "Database connection error %s:" % e.args[0]
@@ -156,56 +175,17 @@ class PlWikiProvider(WikiProvider):
 ##            print word # stopniowanie na podstawie podanego drugiego stopnia
 #            pass
         
-#        data = {'stopien' : 'podstawowy'}
-#        # generowanie odmian
-        if self.__schema_adjective is None:
-            self.__schema_adjective = self._load("../data/adjective_schema")
 
+#        # generowanie odmian
         last_letter = word[len(word) - 1]
 #        print base_word, last_letter
-#        if last_letter == 'y' or last_letter == 'i':
-        retval = copy.deepcopy(self.__schema_adjective[last_letter])
-#            print retval['przypadek']['mianownik']['liczba']['mnoga']['rodzaj']['m']
-#            for przyp in retval['przypadek']:
-#                for licz in retval['przypadek'][przyp]['liczba']:
-#                    for rodz in retval['przypadek'][przyp]['liczba'][licz]['rodzaj']:
-#                        retval['przypadek'][przyp]['liczba'][licz]['rodzaj'][rodz] = base_word[0:len(base_word) - 1] + retval['przypadek'][przyp]['liczba'][licz]['rodzaj'][rodz]
-        try:
-            con = db.connect("../data/pl.db")
-            cur = con.cursor()
-#            cur.execute('CREATE TABLE przymiotnik_schemat (sufix TEXT, przypadek TEXT, liczba TEXT, rodzaj TEXT, result TEXT)')
-            for przyp in retval['przypadek']:
-                for licz in retval['przypadek'][przyp]['liczba']:
-                    for rodz in retval['przypadek'][przyp]['liczba'][licz]['rodzaj']:
-                        if licz == 'pojedyncza':
-                            rodza = {
-                                "m" : "męski",
-                                "ż" : "żeński",
-                                "n" : "nijaki"
-                            }.get(rodz)
-                        else:
-                            rodza = {
-                                "m" : "męskoosobowy",
-                                "nm" : "niemęskoosobowy"
-                            }.get(rodz)
-                            
-                        print 'INSERT INTO przymiotnik_schemat (przypadek, liczba, rodzaj, sufix, result) VALUES (%s, %s, %s, %s, %s)' % (last_letter, przyp, licz, rodza, retval['przypadek'][przyp]['liczba'][licz]['rodzaj'][rodz])
-                        cur.execute('INSERT INTO przymiotnik_schemat VALUES ("%s", "%s", "%s", "%s", "%s")' % (last_letter, przyp, licz, rodza, retval['przypadek'][przyp]['liczba'][licz]['rodzaj'][rodz]))
-                        con.commit()
-                
-#            cur.execute('INSERT INTO indeks (word, type) VALUES(%s, %s)' % (word, type))
-#            cur.execute('INSERT INTO przymiotnik ("word") VALUES ("dupa")')
-#            con.commit()
-#            print cur.fetchall()
-        except db.Error, e:
-            print "Database connection error %s:" % e.args[0]
-            
-        finally:
-            if con:
-                con.close() 
-                
-#            print base_word, 'haskey', base_word[len(base_word) - 2]
-#            print retval['przypadek']['mianownik']['liczba']['mnoga']['rodzaj']['m']
+        if last_letter == 'y' or last_letter == 'i':
+            data = self._get_custom_data_from_database('SELECT * from przymiotnik_schemat WHERE sufix="%s"' % last_letter)
+            for conf in data:
+                del conf['sufix']
+                conf['result'] = word[:-1] + conf['result']
+                conf['stopien'] = 'podstawowy'
+                self._insert_data_into_database("przymiotnik", word, conf)    
 #            if self.__schema_adjective['exceptions'].has_key(base_word[len(base_word) - 2]) == 1:
 #                tmp = list(retval['przypadek']['mianownik']['liczba']['mnoga']['rodzaj']['m'])
 #                tmp[len(base_word) - 2]  = self.__schema_adjective['exceptions'][base_word[len(base_word) - 2]]
